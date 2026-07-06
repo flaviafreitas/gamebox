@@ -1,4 +1,4 @@
--- GameLog — schema inicial
+-- GameBox — schema inicial
 -- Tabelas: profiles, games (cache IGDB), game_status (prateleira), logs (diário/reviews), follows.
 
 -- ---------------------------------------------------------------------------

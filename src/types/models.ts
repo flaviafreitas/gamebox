@@ -1,5 +1,5 @@
 /**
- * Tipos do domínio do GameLog.
+ * Tipos do domínio do GameBox.
  * Espelham as tabelas do Supabase (ver supabase/migrations).
  */
 

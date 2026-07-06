@@ -1,5 +1,5 @@
 /**
- * Paleta e tokens de design do GameLog.
+ * Paleta e tokens de design do GameBox.
  * App dark-first (estilo Letterboxd/Backloggd). O modo escuro é forçado em app.json.
  */
 

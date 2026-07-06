@@ -37,11 +37,11 @@ export default function LoginScreen() {
         style={styles.flex}>
         <View style={styles.header}>
           <View style={styles.logoBadge}>
-            <ThemedText style={styles.logoMark}>GL</ThemedText>
+            <ThemedText style={styles.logoMark}>GB</ThemedText>
           </View>
           <ThemedText type="subtitle">Entrar</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Bem-vinda de volta ao GameLog.
+            Bem-vinda de volta ao GameBox.
           </ThemedText>
         </View>
 
