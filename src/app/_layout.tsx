@@ -1,9 +1,13 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { queryClient } from '@/lib/query-client';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,17 +23,38 @@ const navTheme = {
   },
 };
 
-export default function RootLayout() {
+function RootNavigator() {
+  const { session, loading } = useAuth();
+
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (!loading) SplashScreen.hideAsync();
+  }, [loading]);
+
+  if (loading) return null;
 
   return (
-    <ThemeProvider value={navTheme}>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-      </Stack>
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(tabs)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider value={navTheme}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <StatusBar style="light" />
+            <RootNavigator />
+          </AuthProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
