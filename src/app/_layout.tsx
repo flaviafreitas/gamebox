@@ -44,6 +44,10 @@ function RootNavigator() {
           name="log/[gameId]"
           options={{ presentation: 'modal', headerShown: true, title: 'Novo registro' }}
         />
+        <Stack.Screen
+          name="user/[username]"
+          options={{ headerShown: true, title: '', headerBackTitle: 'Voltar' }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
