@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Cover } from '@/components/game-card';
 import { RatingStars } from '@/components/rating-stars';
 import { StatusPicker } from '@/components/status-picker';
+import { StoryCard, STORY_HEIGHT, STORY_WIDTH } from '@/components/story-card';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
@@ -13,7 +15,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { getShelfStatus, getMyLogsForGame, setShelfStatus } from '@/lib/games';
 import { getGame } from '@/lib/igdb';
-import type { ShelfStatus } from '@/types/models';
+import { getProfile } from '@/lib/profile';
+import { shareViewToStory } from '@/lib/share';
+import type { Log, ShelfStatus } from '@/types/models';
+
+const canShare = Platform.OS !== 'web';
 
 export default function GameDetailScreen() {
   const theme = useTheme();
@@ -42,6 +48,43 @@ export default function GameDetailScreen() {
     queryFn: () => getMyLogsForGame(gameId, userId),
     enabled: Number.isFinite(gameId),
   });
+
+  const profileQuery = useQuery({
+    queryKey: ['profile', userId],
+    queryFn: () => getProfile(userId),
+  });
+
+  // Compartilhamento do registro nos stories (captura de uma view oculta).
+  const shareRef = useRef<View>(null);
+  const [sharingLog, setSharingLog] = useState<Log | null>(null);
+  const [sharingBusy, setSharingBusy] = useState(false);
+
+  function startShare(log: Log) {
+    setSharingBusy(true);
+    setSharingLog(log);
+  }
+
+  useEffect(() => {
+    if (!sharingLog) return;
+    let cancelled = false;
+    // pequeno atraso pra garantir que a capa carregou antes de capturar
+    const timer = setTimeout(async () => {
+      try {
+        await shareViewToStory(shareRef);
+      } catch (err) {
+        Alert.alert('Erro ao compartilhar', (err as Error).message);
+      } finally {
+        if (!cancelled) {
+          setSharingBusy(false);
+          setSharingLog(null);
+        }
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [sharingLog]);
 
   const statusMutation = useMutation({
     mutationFn: (status: ShelfStatus | null) => setShelfStatus(game!, userId, status),
@@ -126,6 +169,18 @@ export default function GameDetailScreen() {
                   {new Date(log.created_at).toLocaleDateString('pt-BR')}
                   {log.liked ? '  ·  ❤️' : ''}
                 </ThemedText>
+                {canShare ? (
+                  <Pressable
+                    onPress={() => startShare(log)}
+                    disabled={sharingBusy}
+                    style={styles.shareBtn}>
+                    <ThemedText type="smallBold" style={{ color: theme.accent }}>
+                      {sharingBusy && sharingLog?.id === log.id
+                        ? 'Gerando...'
+                        : '↗  Compartilhar nos stories'}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
               </View>
             ))}
           </View>
@@ -149,6 +204,21 @@ export default function GameDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {sharingLog ? (
+        <View style={styles.hiddenCapture} pointerEvents="none">
+          <View ref={shareRef} collapsable={false}>
+            <StoryCard
+              coverUrl={game.cover_url}
+              title={game.name}
+              year={year}
+              rating={sharingLog.rating}
+              review={sharingLog.review}
+              username={profileQuery.data?.username}
+            />
+          </View>
+        </View>
+      ) : null}
     </Screen>
   );
 }
@@ -175,6 +245,14 @@ const styles = StyleSheet.create({
   section: { gap: Spacing.two },
   logCard: { padding: Spacing.three, borderRadius: Radius.md, gap: Spacing.two },
   review: { lineHeight: 20 },
+  shareBtn: { paddingTop: Spacing.one },
+  hiddenCapture: {
+    position: 'absolute',
+    left: -10000,
+    top: 0,
+    width: STORY_WIDTH,
+    height: STORY_HEIGHT,
+  },
   metaRow: { flexDirection: 'row', gap: Spacing.two },
   metaLabel: { width: 96 },
   metaValue: { flex: 1 },
