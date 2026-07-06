@@ -1,56 +1,93 @@
-# Welcome to your Expo app 👋
+# GameBox 🎮
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Um "Letterboxd para video games": busque jogos, marque como *jogando / quero jogar / zerado / abandonado*, dê nota, escreva reviews e siga outras pessoas para ver a atividade delas.
 
-## Get started
+## Stack
 
-1. Install dependencies
+- **App:** React Native + [Expo](https://expo.dev) (SDK 57) + expo-router + TypeScript
+- **Backend:** [Supabase](https://supabase.com) (Postgres, Auth, Storage, Edge Functions)
+- **Dados dos jogos:** [IGDB](https://www.igdb.com/api) (via Twitch OAuth), acessada por uma Edge Function
+- **Estado/dados:** TanStack Query · **Imagens:** expo-image
 
-   ```bash
-   npm install
-   ```
+## Pré-requisitos
 
-2. Start the app
+- Node 20+ e um celular com o app **Expo Go** (ou emulador Android/iOS)
+- Uma conta no [Supabase](https://supabase.com)
+- Uma conta de desenvolvedor na [Twitch](https://dev.twitch.tv/console) (para a IGDB)
 
-   ```bash
-   npx expo start
-   ```
+## Configuração
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Dependências
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Supabase
 
-### Other setup steps
+1. Crie um projeto novo no [dashboard do Supabase](https://supabase.com/dashboard).
+2. Aplique o schema do banco. Com a [Supabase CLI](https://supabase.com/docs/guides/cli):
+   ```bash
+   supabase link --project-ref SEU_PROJECT_REF
+   supabase db push
+   ```
+   (ou copie o conteúdo de `supabase/migrations/*.sql` no **SQL Editor** do dashboard e execute).
+3. Em **Project Settings → API**, copie a `Project URL` e a `anon public key`.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### 3. Twitch / IGDB
 
-## Learn more
+1. Em [dev.twitch.tv/console](https://dev.twitch.tv/console), registre uma aplicação e gere um **Client ID** e um **Client Secret**.
+2. Esses valores ficam **apenas no servidor** (Edge Function), nunca no app.
 
-To learn more about developing your project with Expo, look at the following resources:
+### 4. Edge Function `igdb`
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+supabase functions deploy igdb
+supabase secrets set TWITCH_CLIENT_ID=xxxx TWITCH_CLIENT_SECRET=yyyy
+```
 
-## Join the community
+### 5. Variáveis de ambiente do app
 
-Join our community of developers creating universal apps.
+Copie `.env.example` para `.env` e preencha:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+EXPO_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
+```
+
+### 6. Rodar
+
+```bash
+npx expo start
+```
+
+Escaneie o QR code com o Expo Go (ou pressione `a`/`i` para emulador).
+
+## Estrutura
+
+```
+src/
+  app/                 # rotas (expo-router)
+    (auth)/            # login, signup
+    (tabs)/            # início (feed), buscar, perfil
+    game/[id].tsx      # detalhe do jogo + prateleira
+    log/[gameId].tsx   # modal de registro/avaliação
+    user/[username].tsx# perfil de outra pessoa
+  components/          # UI reutilizável (GameCard, LogItem, RatingStars, ...)
+  hooks/               # useAuth, useDebounce, useTheme
+  lib/                 # supabase, igdb, games, profile, social
+  constants/theme.ts   # paleta e tokens
+supabase/
+  functions/igdb/      # proxy da IGDB
+  migrations/          # schema + RLS
+```
+
+## Modelo de dados
+
+- `profiles` — perfil público (1:1 com `auth.users`, criado por trigger no signup)
+- `games` — cache local dos jogos da IGDB
+- `game_status` — prateleira do usuário (1 por user+jogo)
+- `logs` — diário/reviews (N por user+jogo), nota de 0,5 a 5
+- `follows` — relação social
+
+Todas as tabelas têm Row Level Security.

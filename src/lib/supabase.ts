@@ -4,9 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/env';
+import { isSupabaseConfigured, SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/env';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Fallback só para o app não quebrar no boot antes do .env ser preenchido.
+// As chamadas falharão de forma controlada até a configuração real.
+const url = isSupabaseConfigured ? SUPABASE_URL : 'https://placeholder.supabase.co';
+const anonKey = isSupabaseConfigured ? SUPABASE_ANON_KEY : 'placeholder-anon-key';
+
+export const supabase = createClient(url, anonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
